@@ -255,142 +255,170 @@ public class DDSLoader implements AssetLoader {
         normal = is(pfFlags, DDPF_NORMAL);
 
         if (is(pfFlags, DDPF_FOURCC)) {
-            compressed = true;
-            int fourcc = in.readInt();
-            int swizzle = in.readInt();
-            in.skipBytes(16);
-
-            switch (fourcc) {
-                case PF_DXT1:
-                    bpp = 4;
-                    if (is(pfFlags, DDPF_ALPHAPIXELS)) {
-                        pixelFormat = Image.Format.DXT1A;
-                    } else {
-                        pixelFormat = Image.Format.DXT1;
-                    }
-                    break;
-                case PF_DXT3:
-                    bpp = 8;
-                    pixelFormat = Image.Format.DXT3;
-                    break;
-                case PF_DXT5:
-                    bpp = 8;
-                    pixelFormat = Image.Format.DXT5;
-                    if (swizzle == SWIZZLE_xGxR) {
-                        normal = true;
-                    }
-                    break;
-                /*
-                case PF_ATI1:
-                    bpp = 4;
-                    pixelFormat = Image.Format.LTC;
-                    break;
-                case PF_ATI2:
-                    bpp = 8;
-                    pixelFormat = Image.Format.LATC;
-                    break;
-                */
-                case PF_DX10:
-                    compressed = false;
-                    directx10 = true;
-                    // exit here, the rest of the structure is not valid
-                    // the real format will be available in the DX10 header
-                    return;
-                    
-                case 113:
-                    compressed = false;
-                    bpp = 64;
-                    pixelFormat = Image.Format.RGBA16F;
-                    break;
-                default:
-                    throw new IOException("Unknown fourcc: " + string(fourcc) + ", " + Integer.toHexString(fourcc));
-            }
-
-            int size = ((width + 3) / 4) * ((height + 3) / 4) * bpp * 2;
-
-            if (is(flags, DDSD_LINEARSIZE)) {
-                if (pitchOrSize == 0) {
-                    logger.warning("Must use linear size with fourcc");
-                    pitchOrSize = size;
-                } else if (pitchOrSize != size) {
-                    logger.log(Level.WARNING, "Expected size = {0}, real = {1}",
-                            new Object[]{size, pitchOrSize});
-                }
-            } else {
-                pitchOrSize = size;
-            }
+            doFourCC(pfFlags);
         } else {
-            compressed = false;
-
-            // skip fourCC
-            in.readInt();
-
-            bpp = in.readInt();
-            redMask = in.readInt();
-            greenMask = in.readInt();
-            blueMask = in.readInt();
-            alphaMask = in.readInt();
-
-            if (is(pfFlags, DDPF_RGB)) {
-                if (is(pfFlags, DDPF_ALPHAPIXELS)) {
-                    if (bpp == 16) {
-                        pixelFormat = Format.RGB5A1;
-                    } else {
-                        pixelFormat = Format.RGBA8;
-                    }
-                } else {
-                    if (bpp == 16) {
-                        pixelFormat = Format.RGB565;
-                    } else {
-                        pixelFormat = Format.RGB8;
-                    }
-                }
-            } else if (is(pfFlags, DDPF_GRAYSCALE) && is(pfFlags, DDPF_ALPHAPIXELS)) {
-                switch (bpp) {
-                    case 16:
-                        pixelFormat = Format.Luminance8Alpha8;
-                        break;
-                    default:
-                        throw new IOException("Unsupported GrayscaleAlpha BPP: " + bpp);
-                }
-                grayscaleOrAlpha = true;
-            } else if (is(pfFlags, DDPF_GRAYSCALE)) {
-                switch (bpp) {
-                    case 8:
-                        pixelFormat = Format.Luminance8;
-                        break;
-                    default:
-                        throw new IOException("Unsupported Grayscale BPP: " + bpp);
-                }
-                grayscaleOrAlpha = true;
-            } else if (is(pfFlags, DDPF_ALPHA)) {
-                switch (bpp) {
-                    case 8:
-                        pixelFormat = Format.Alpha8;
-                        break;
-                    default:
-                        throw new IOException("Unsupported Alpha BPP: " + bpp);
-                }
-                grayscaleOrAlpha = true;
-            } else {
-                throw new IOException("Unknown PixelFormat in DDS file");
-            }
-
-            int size = (bpp / 8 * width);
-
-            if (is(flags, DDSD_LINEARSIZE)) {
-                if (pitchOrSize == 0) {
-                    logger.warning("Linear size said to contain valid value but does not");
-                    pitchOrSize = size;
-                } else if (pitchOrSize != size) {
-                    logger.log(Level.WARNING, "Expected size = {0}, real = {1}",
-                            new Object[]{size, pitchOrSize});
-                }
-            } else {
-                pitchOrSize = size;
-            }
+            doNotFourCC(pfFlags);
         }
     }
+
+	private void doNotFourCC(int pfFlags) throws IOException {
+		compressed = false;
+
+		// skip fourCC
+		in.readInt();
+
+		bpp = in.readInt();
+		redMask = in.readInt();
+		greenMask = in.readInt();
+		blueMask = in.readInt();
+		alphaMask = in.readInt();
+
+		if (is(pfFlags, DDPF_RGB)) {
+		    doDdpfRGB(pfFlags);
+		} else if (is(pfFlags, DDPF_GRAYSCALE) && is(pfFlags, DDPF_ALPHAPIXELS)) {
+		    doDdpfGray();
+		} else if (is(pfFlags, DDPF_GRAYSCALE)) {
+		    doDdpfNonAlpha();
+		} else if (is(pfFlags, DDPF_ALPHA)) {
+		    doDdpfAlpha();
+		} else {
+		    throw new IOException("Unknown PixelFormat in DDS file");
+		}
+
+		int size = (bpp / 8 * width);
+
+		if (is(flags, DDSD_LINEARSIZE)) {
+		    doDdsdLinear(size);
+		} else {
+		    pitchOrSize = size;
+		}
+	}
+
+	private void doDdsdLinear(int size) {
+		if (pitchOrSize == 0) {
+		    logger.warning("Linear size said to contain valid value but does not");
+		    pitchOrSize = size;
+		} else if (pitchOrSize != size) {
+		    logger.log(Level.WARNING, "Expected size = {0}, real = {1}",
+		            new Object[]{size, pitchOrSize});
+		}
+	}
+
+	private void doDdpfAlpha() throws IOException {
+		switch (bpp) {
+		    case 8:
+		        pixelFormat = Format.Alpha8;
+		        break;
+		    default:
+		        throw new IOException("Unsupported Alpha BPP: " + bpp);
+		}
+		grayscaleOrAlpha = true;
+	}
+
+	private void doDdpfNonAlpha() throws IOException {
+		switch (bpp) {
+		    case 8:
+		        pixelFormat = Format.Luminance8;
+		        break;
+		    default:
+		        throw new IOException("Unsupported Grayscale BPP: " + bpp);
+		}
+		grayscaleOrAlpha = true;
+	}
+
+	private void doDdpfGray() throws IOException {
+		switch (bpp) {
+		    case 16:
+		        pixelFormat = Format.Luminance8Alpha8;
+		        break;
+		    default:
+		        throw new IOException("Unsupported GrayscaleAlpha BPP: " + bpp);
+		}
+		grayscaleOrAlpha = true;
+	}
+
+	private void doDdpfRGB(int pfFlags) {
+		if (is(pfFlags, DDPF_ALPHAPIXELS)) {
+		    if (bpp == 16) {
+		        pixelFormat = Format.RGB5A1;
+		    } else {
+		        pixelFormat = Format.RGBA8;
+		    }
+		} else {
+		    if (bpp == 16) {
+		        pixelFormat = Format.RGB565;
+		    } else {
+		        pixelFormat = Format.RGB8;
+		    }
+		}
+	}
+
+	private void doFourCC(int pfFlags) throws IOException {
+		compressed = true;
+		int fourcc = in.readInt();
+		int swizzle = in.readInt();
+		in.skipBytes(16);
+
+		switch (fourcc) {
+		    case PF_DXT1:
+		        bpp = 4;
+		        if (is(pfFlags, DDPF_ALPHAPIXELS)) {
+		            pixelFormat = Image.Format.DXT1A;
+		        } else {
+		            pixelFormat = Image.Format.DXT1;
+		        }
+		        break;
+		    case PF_DXT3:
+		        bpp = 8;
+		        pixelFormat = Image.Format.DXT3;
+		        break;
+		    case PF_DXT5:
+		        bpp = 8;
+		        pixelFormat = Image.Format.DXT5;
+		        if (swizzle == SWIZZLE_xGxR) {
+		            normal = true;
+		        }
+		        break;
+		    /*
+		    case PF_ATI1:
+		        bpp = 4;
+		        pixelFormat = Image.Format.LTC;
+		        break;
+		    case PF_ATI2:
+		        bpp = 8;
+		        pixelFormat = Image.Format.LATC;
+		        break;
+		    */
+		    case PF_DX10:
+		        compressed = false;
+		        directx10 = true;
+		        // exit here, the rest of the structure is not valid
+		        // the real format will be available in the DX10 header
+		        return;
+		        
+		    case 113:
+		        compressed = false;
+		        bpp = 64;
+		        pixelFormat = Image.Format.RGBA16F;
+		        break;
+		    default:
+		        throw new IOException("Unknown fourcc: " + string(fourcc) + ", " + Integer.toHexString(fourcc));
+		}
+
+		int size = ((width + 3) / 4) * ((height + 3) / 4) * bpp * 2;
+
+		if (is(flags, DDSD_LINEARSIZE)) {
+		    if (pitchOrSize == 0) {
+		        logger.warning("Must use linear size with fourcc");
+		        pitchOrSize = size;
+		    } else if (pitchOrSize != size) {
+		        logger.log(Level.WARNING, "Expected size = {0}, real = {1}",
+		                new Object[]{size, pitchOrSize});
+		    }
+		} else {
+		    pitchOrSize = size;
+		}
+	}
 
     /**
      * Computes the sizes of each mipmap level in bytes, and stores it in sizes_[].
