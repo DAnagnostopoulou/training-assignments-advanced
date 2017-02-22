@@ -44,31 +44,7 @@ final public class FastMath {
 
     private FastMath() {
     }
-    /** A "close to zero" double epsilon value for use*/
-    public static final double DBL_EPSILON = 2.220446049250313E-16d;
-    /** A "close to zero" float epsilon value for use*/
-    public static final float FLT_EPSILON = 1.1920928955078125E-7f;
-    /** A "close to zero" float epsilon value for use*/
-    public static final float ZERO_TOLERANCE = 0.0001f;
-    public static final float ONE_THIRD = 1f / 3f;
-    /** The value PI as a float. (180 degrees) */
-    public static final float PI = (float) Math.PI;
-    /** The value 2PI as a float. (360 degrees) */
-    public static final float TWO_PI = 2.0f * PI;
-    /** The value PI/2 as a float. (90 degrees) */
-    public static final float HALF_PI = 0.5f * PI;
-    /** The value PI/4 as a float. (45 degrees) */
-    public static final float QUARTER_PI = 0.25f * PI;
-    /** The value 1/PI as a float. */
-    public static final float INV_PI = 1.0f / PI;
-    /** The value 1/(2PI) as a float. */
-    public static final float INV_TWO_PI = 1.0f / TWO_PI;
-    /** A value to multiply a degree value by, to convert it to radians. */
-    public static final float DEG_TO_RAD = PI / 180.0f;
-    /** A value to multiply a radian value by, to convert it to degrees. */
-    public static final float RAD_TO_DEG = 180.0f / PI;
-    /** A precreated random object for random numbers. */
-    public static final Random rand = new Random(System.currentTimeMillis());
+
 
     /**
      * Returns true if the number is a power of 2 (2,4,8,16...)
@@ -427,68 +403,6 @@ final public class FastMath {
         return result;
     }
 
-    /**
-     * Returns the arc cosine of a value.<br>
-     * Special cases:
-     * <ul><li>If fValue is smaller than -1, then the result is PI.
-     * <li>If the argument is greater than 1, then the result is 0.</ul>
-     * @param fValue The value to arc cosine.
-     * @return The angle, in radians.
-     * @see java.lang.Math#acos(double)
-     */
-    public static float acos(float fValue) {
-        if (-1.0f < fValue) {
-            if (fValue < 1.0f) {
-                return (float) Math.acos(fValue);
-            }
-
-            return 0.0f;
-        }
-
-        return PI;
-    }
-
-    /**
-     * Returns the arc sine of a value.<br>
-     * Special cases:
-     * <ul><li>If fValue is smaller than -1, then the result is -HALF_PI.
-     * <li>If the argument is greater than 1, then the result is HALF_PI.</ul>
-     * @param fValue The value to arc sine.
-     * @return the angle in radians.
-     * @see java.lang.Math#asin(double)
-     */
-    public static float asin(float fValue) {
-        if (-1.0f < fValue) {
-            if (fValue < 1.0f) {
-                return (float) Math.asin(fValue);
-            }
-
-            return HALF_PI;
-        }
-
-        return -HALF_PI;
-    }
-
-    /**
-     * Returns the arc tangent of an angle given in radians.<br>
-     * @param fValue The angle, in radians.
-     * @return fValue's atan
-     * @see java.lang.Math#atan(double)
-     */
-    public static float atan(float fValue) {
-        return (float) Math.atan(fValue);
-    }
-
-    /**
-     * A direct call to Math.atan2.
-     * @param fY
-     * @param fX
-     * @return Math.atan2(fY,fX)
-     * @see java.lang.Math#atan2(double, double)
-     */
-    public static float atan2(float fY, float fX) {
-        return (float) Math.atan2(fY, fX);
-    }
 
     /**
      * Rounds a fValue up.  A call to Math.ceil
@@ -500,25 +414,6 @@ final public class FastMath {
         return (float) Math.ceil(fValue);
     }
 
-    /**
-     * Returns cosine of an angle. Direct call to java.lang.Math
-     * @see Math#cos(double) 
-     * @param v The angle to cosine.
-     * @return  the cosine of the angle.
-     */
-    public static float cos(float v) {
-        return (float) Math.cos(v);
-    }
-
-    /**
-     * Returns the sine of an angle. Direct call to java.lang.Math
-     * @see Math#sin(double) 
-     * @param v The angle to sine.
-     * @return the sine of the angle.
-     */
-    public static float sin(float v) {
-        return (float) Math.sin(v);
-    }
 
     /**
      * Returns E^fValue
@@ -623,16 +518,6 @@ final public class FastMath {
         return (float) Math.sqrt(fValue);
     }
 
-    /**
-     * Returns the tangent of a value.  If USE_FAST_TRIG is enabled, an approximate value
-     * is returned.  Otherwise, a direct value is used.
-     * @param fValue The value to tangent, in radians.
-     * @return The tangent of fValue.
-     * @see java.lang.Math#tan(double)
-     */
-    public static float tan(float fValue) {
-        return (float) Math.tan(fValue);
-    }
 
     /**
      * Returns 1 if the number is positive, -1 if the number is negative, and 0 otherwise
@@ -758,7 +643,7 @@ final public class FastMath {
      *         <tt>1.0f</tt> (exclusive).
      */
     public static float nextRandomFloat() {
-        return rand.nextFloat();
+        return FastMathConstants.rand.nextFloat();
     }
 
     /**
@@ -772,7 +657,7 @@ final public class FastMath {
     }
 
     public static int nextRandomInt() {
-        return rand.nextInt();
+        return FastMathConstants.rand.nextInt();
     }
 
     /**
@@ -804,14 +689,14 @@ final public class FastMath {
         }
         float x = cartCoords.x;
         if (x == 0) {
-            x = FastMath.FLT_EPSILON;
+            x = FastMathConstants.FLT_EPSILON;
         }
         store.x = FastMath.sqrt((x * x)
                 + (cartCoords.y * cartCoords.y)
                 + (cartCoords.z * cartCoords.z));
         store.y = FastMath.atan(cartCoords.z / x);
         if (x < 0) {
-            store.y += FastMath.PI;
+            store.y += FastMathConstants.PI;
         }
         store.z = FastMath.asin(cartCoords.y / store.x);
         return store;
@@ -846,14 +731,14 @@ final public class FastMath {
         }
         float x = cartCoords.x;
         if (x == 0) {
-            x = FastMath.FLT_EPSILON;
+            x = FastMathConstants.FLT_EPSILON;
         }
         store.x = FastMath.sqrt((x * x)
                 + (cartCoords.y * cartCoords.y)
                 + (cartCoords.z * cartCoords.z));
         store.z = FastMath.atan(cartCoords.z / x);
         if (x < 0) {
-            store.z += FastMath.PI;
+            store.z += FastMathConstants.PI;
         }
         store.y = FastMath.asin(cartCoords.y / store.x);
         return store;
