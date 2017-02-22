@@ -34,6 +34,7 @@ package com.jme3.post;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.math.Vector2f;
+import com.jme3.post.HDRRenderer.Dimension;
 import com.jme3.renderer.*;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.texture.FrameBuffer;
@@ -165,47 +166,98 @@ public class HDRRenderer implements SceneProcessor {
         return dispQuad;
     }
 
-    private Material createLumShader(int srcW, int srcH, int bufW, int bufH, int mode,
-                                int iters, Texture tex){
+    public static class Dimension {
+		public int srcW;
+		public int srcH;
+
+		public Dimension(int srcW, int srcH) {
+			this.srcW = srcW;
+			this.srcH = srcH;
+		}
+	}
+
+	public static class ShaderParams {
+		public Dimension source;
+		public Dimension buffer;
+		public int mode;
+		public int iters;
+		public Texture tex;
+
+		public ShaderParams(Dimension source, Dimension buffer, int mode, int iters, Texture tex) {
+			this.source = source;
+			this.buffer = buffer;
+			this.mode = mode;
+			this.iters = iters;
+			this.tex = tex;
+		}
+	}
+
+	private Material createLumShader(ShaderParams shaderParams){
         Material mat = new Material(manager, "Common/MatDefs/Hdr/LogLum.j3md");
         
-        Vector2f blockSize = new Vector2f(1f / bufW, 1f / bufH);
-        Vector2f pixelSize = new Vector2f(1f / srcW, 1f / srcH);
+        MaterialChars chars = calculateMaterialChars(shaderParams);
+        mat = setMaterialChar(mat, chars);
+
+        return mat;
+    }
+
+	private MaterialChars calculateMaterialChars(ShaderParams shaderParams){
+        Vector2f blockSize = new Vector2f(1f / shaderParams.buffer.srcW, 1f / shaderParams.buffer.srcH);
+        Vector2f pixelSize = new Vector2f(1f / shaderParams.source.srcW, 1f / shaderParams.source.srcH);
         Vector2f blocks = new Vector2f();
         float numPixels = Float.POSITIVE_INFINITY;
-        if (iters != -1){
+        if (shaderParams.iters != -1){
             do {
                 pixelSize.multLocal(2);
                 blocks.set(blockSize.x / pixelSize.x,
                            blockSize.y / pixelSize.y);
                 numPixels = blocks.x * blocks.y;
-            } while (numPixels > iters);
+            } while (numPixels > shaderParams.iters);
         }else{
             blocks.set(blockSize.x / pixelSize.x,
                        blockSize.y / pixelSize.y);
             numPixels = blocks.x * blocks.y;
         }
+        return new MaterialChars(shaderParams.mode, shaderParams.tex, blockSize, pixelSize, numPixels);
+	}
+	
+	public static class MaterialChars {
+		public int mode;
+		public Texture tex;
+		public Vector2f blockSize;
+		public Vector2f pixelSize;
+		public float numPixels;
 
-        mat.setBoolean("Blocks", true);
-        if (mode == LUMMODE_ENCODE_LUM)
+		public MaterialChars(int mode, Texture text, Vector2f blockSize, Vector2f pixelSize,
+				float numPixels) {
+			this.mode = mode;
+			this.tex = text;
+			this.blockSize = blockSize;
+			this.pixelSize = pixelSize;
+			this.numPixels = numPixels;
+		}
+	}
+
+	private Material setMaterialChar(Material mat, MaterialChars chars) {
+		mat.setBoolean("Blocks", true);
+        if (chars.mode == LUMMODE_ENCODE_LUM)
             mat.setBoolean("EncodeLum", true);
-        else if (mode == LUMMODE_DECODE_LUM)
+        else if (chars.mode == LUMMODE_DECODE_LUM)
             mat.setBoolean("DecodeLum", true);
 
-        mat.setTexture("Texture", tex);
-        mat.setVector2("BlockSize", blockSize);
-        mat.setVector2("PixelSize", pixelSize);
-        mat.setFloat("NumPixels", numPixels);
-
+        mat.setTexture("Texture", chars.tex);
+        mat.setVector2("BlockSize", chars.blockSize);
+        mat.setVector2("PixelSize", chars.pixelSize);
+        mat.setFloat("NumPixels", chars.numPixels);
         return mat;
-    }
+	}
 
     private void createLumShaders(){
         int w = mainSceneFB.getWidth();
         int h = mainSceneFB.getHeight();
-        hdr64 = createLumShader(w,  h,  64, 64, LUMMODE_ENCODE_LUM, maxIterations, mainScene);
-        hdr8  = createLumShader(64, 64, 8,  8,  LUMMODE_NONE,       maxIterations, scene64);
-        hdr1  = createLumShader(8,  8,  1,  1,  LUMMODE_NONE,       maxIterations, scene8);
+        hdr64 = createLumShader(new Dimension(w, h),  64,  64, LUMMODE_ENCODE_LUM, maxIterations, mainScene);
+        hdr8  = createLumShader(new Dimension(64, 64), 8, 8,  LUMMODE_NONE,  maxIterations,       scene64);
+        hdr1  = createLumShader(new Dimension(8, 8),  1,  1,  LUMMODE_NONE,  maxIterations,       scene8);
     }
 
     private int opposite(int i){
