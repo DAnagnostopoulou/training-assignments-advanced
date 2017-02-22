@@ -100,7 +100,7 @@ public class MipMapImageRaster extends ImageRaster {
     public void setPixel(int x, int y, ColorRGBA color) {
         rangeCheck(x, y);
 
-        DefaultImageRaster.setColorComponents(codec, components, color);
+        PixelUtils.setColorComponents(codec, components, color);
         codec.writeComponents(getBuffer(), x, y, width[mipLevel], offsets[mipLevel], components, temp);
         image.setUpdateNeeded();
     }
@@ -117,7 +117,7 @@ public class MipMapImageRaster extends ImageRaster {
         rangeCheck(x, y);
 
         codec.readComponents(getBuffer(), x, y, width[mipLevel], offsets[mipLevel], components, temp);
-        DefaultImageRaster.getColorComponents(codec, components, store);
+        PixelUtils.getColorComponents(codec, components, store);
         return store;
     }
 
