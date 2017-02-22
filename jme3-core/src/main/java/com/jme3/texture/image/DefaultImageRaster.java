@@ -122,7 +122,13 @@ public class DefaultImageRaster extends ImageRaster {
             color = color.getAsSrgb();
         }
         
-        // Check flags for grayscale
+        setColorComponents(codec, components, color);     
+        codec.writeComponents(getBuffer(), x, y, width, offset, components, temp);
+        image.setUpdateNeeded();
+    }
+
+	public static void setColorComponents(ImageCodec codec, int[] components, ColorRGBA color) {
+		// Check flags for grayscale
         if (codec.isGray) {
             float gray = color.r * 0.27f + color.g * 0.67f + color.b * 0.06f;
             color = new ColorRGBA(gray, gray, gray, color.a);
@@ -148,10 +154,8 @@ public class DefaultImageRaster extends ImageRaster {
                 components[2] = Math.min( (int) (color.g * codec.maxGreen + 0.5f), codec.maxGreen);
                 components[3] = Math.min( (int) (color.b * codec.maxBlue + 0.5f), codec.maxBlue);
                 break;
-        }     
-        codec.writeComponents(getBuffer(), x, y, width, offset, components, temp);
-        image.setUpdateNeeded();
-    }
+        }
+	}
     
     private ByteBuffer getBuffer(){
         if(buffer == null){
@@ -165,7 +169,18 @@ public class DefaultImageRaster extends ImageRaster {
         rangeCheck(x, y);
         
         codec.readComponents(getBuffer(), x, y, width, offset, components, temp);
-        if (store == null) {
+        getColorComponents(codec, components, store);
+        
+        if (convertToLinear) {
+            // Input image is sRGB, need to convert to linear.
+            store.setAsSrgb(store.r, store.g, store.b, store.a);
+        }
+        
+        return store;
+    }
+
+	public static void getColorComponents(ImageCodec codec, int[] components, ColorRGBA store) {
+		if (store == null) {
             store = new ColorRGBA();
         }
         switch (codec.type) {
@@ -205,12 +220,5 @@ public class DefaultImageRaster extends ImageRaster {
                 store.a = 1;
             }
         }
-        
-        if (convertToLinear) {
-            // Input image is sRGB, need to convert to linear.
-            store.setAsSrgb(store.r, store.g, store.b, store.a);
-        }
-        
-        return store;
-    }
+	}
 }
