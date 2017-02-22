@@ -38,10 +38,8 @@ import java.nio.ByteBuffer;
 
 public class MipMapImageRaster extends ImageRaster {
 
-    private final int[] components = new int[4];
     private ByteBuffer buffer;
     private final Image image;
-    private final ImageCodec codec;
     private int width[];
     private int height[];
     private final byte[] temp;
@@ -100,7 +98,7 @@ public class MipMapImageRaster extends ImageRaster {
     public void setPixel(int x, int y, ColorRGBA color) {
         rangeCheck(x, y);
 
-        PixelUtils.setColorComponents(codec, components, color);
+        setColorComponents(color);
         codec.writeComponents(getBuffer(), x, y, width[mipLevel], offsets[mipLevel], components, temp);
         image.setUpdateNeeded();
     }
@@ -117,7 +115,7 @@ public class MipMapImageRaster extends ImageRaster {
         rangeCheck(x, y);
 
         codec.readComponents(getBuffer(), x, y, width[mipLevel], offsets[mipLevel], components, temp);
-        PixelUtils.getColorComponents(codec, components, store);
+        getColorComponents(store);
         return store;
     }
 

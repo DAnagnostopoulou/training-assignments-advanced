@@ -38,10 +38,8 @@ import java.nio.ByteBuffer;
 
 public class DefaultImageRaster extends ImageRaster {
     
-    private final int[] components = new int[4];
     private ByteBuffer buffer;
     private final Image image;
-    private final ImageCodec codec;
     private final int width;
     private final int height;
     private final int offset;
@@ -122,7 +120,7 @@ public class DefaultImageRaster extends ImageRaster {
             color = color.getAsSrgb();
         }
         
-        PixelUtils.setColorComponents(codec, components, color);     
+        setColorComponents(color);     
         codec.writeComponents(getBuffer(), x, y, width, offset, components, temp);
         image.setUpdateNeeded();
     }
@@ -141,7 +139,7 @@ public class DefaultImageRaster extends ImageRaster {
         rangeCheck(x, y);
         
         codec.readComponents(getBuffer(), x, y, width, offset, components, temp);
-        PixelUtils.getColorComponents(codec, components, store);
+        getColorComponents(store);
         
         if (convertToLinear) {
             // Input image is sRGB, need to convert to linear.
